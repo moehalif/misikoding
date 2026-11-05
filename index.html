@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scratch Pac-Man Quiz - PID & Canva Ready</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Poppins:wght@400;600;700&display=swap');
+        
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #0f172a;
+            color: #ffffff;
+            touch-action: manipulation;
+            overflow-x: hidden;
+        }
+
+        .pixel-font {
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        /* Responsive Canvas wrapper */
+        .game-container {
+            position: relative;
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.4);
+            touch-action: none; /* Disables page drag on canvas touch */
+        }
+
+        canvas {
+            border: 4px solid #3b82f6;
+            border-radius: 12px;
+            background-color: #000000;
+        }
+
+        /* Custom Modal Backdrop */
+        .modal-overlay {
+            background-color: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(8px);
+        }
+
+        /* Responsive touch targets for PID */
+        .btn-touch {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-touch:active {
+            transform: scale(0.92);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-2 sm:p-4 select-none">
+
+    <!-- Header Section -->
+    <header class="text-center mb-2 sm:mb-3 w-full max-w-4xl flex justify-between items-center px-2">
+        <div class="text-left">
+            <h1 class="pixel-font text-base sm:text-2xl text-yellow-400 drop-shadow-md tracking-wider">
+                PAC-MAN SCRATCH
+            </h1>
+            <p class="text-xs text-slate-300 hidden sm:block">
+                <span class="text-yellow-400 font-bold">ATURAN MAIN:</span> Gunakan tombol panah pada keyboard, tombol layar, atau usap layar untuk menggerakkan Pac-Man!
+            </p>
+        </div>
+        <button id="fullscreenBtn" class="bg-slate-700 hover:bg-slate-600 text-yellow-400 text-xs px-3 py-2 rounded-lg border border-yellow-500 font-bold flex items-center gap-1">
+            <span>⛶</span> <span class="hidden sm:inline">Layar Penuh</span>
+        </button>
+    </header>
+
+    <!-- Main Game Area -->
+    <main class="flex flex-col items-center w-full max-w-4xl">
+        <!-- Dashboard Top Bar -->
+        <div class="w-full max-w-[600px] flex justify-between items-center bg-slate-800 border border-slate-700 px-4 py-2 rounded-t-xl text-xs sm:text-base font-bold text-yellow-400">
+            <div>SKOR: <span id="scoreText" class="text-white">0</span></div>
+            <div>SOAL: <span id="quizCountText" class="text-green-400">0/6</span></div>
+            <div>NYAWA: <span id="livesText" class="text-red-500">❤️❤️❤️</span></div>
+        </div>
+
+        <!-- Canvas Game Container with Touch Gesture Support -->
+        <div id="canvasWrapper" class="game-container w-full max-w-[600px] bg-black rounded-b-xl relative overflow-hidden">
+            <canvas id="gameCanvas" width="600" height="400" class="w-full h-auto block"></canvas>
+        </div>
+
+        <!-- Touch Controls for Mobile & PID (Papan Interaktif Digital) -->
+        <div class="mt-3 grid grid-cols-3 gap-2 w-52 sm:w-64 text-center">
+            <div></div>
+            <button id="btnUp" class="btn-touch bg-blue-600 active:bg-blue-800 text-white font-bold py-3 sm:py-4 rounded-xl shadow-lg text-2xl hover:bg-blue-500 transition border-b-4 border-blue-800">▲</button>
+            <div></div>
+            <button id="btnLeft" class="btn-touch bg-blue-600 active:bg-blue-800 text-white font-bold py-3 sm:py-4 rounded-xl shadow-lg text-2xl hover:bg-blue-500 transition border-b-4 border-blue-800">◀</button>
+            <button id="btnDown" class="btn-touch bg-blue-600 active:bg-blue-800 text-white font-bold py-3 sm:py-4 rounded-xl shadow-lg text-2xl hover:bg-blue-500 transition border-b-4 border-blue-800">▼</button>
+            <button id="btnRight" class="btn-touch bg-blue-600 active:bg-blue-800 text-white font-bold py-3 sm:py-4 rounded-xl shadow-lg text-2xl hover:bg-blue-500 transition border-b-4 border-blue-800">▶</button>
+        </div>
+    </main>
+
+    <!-- Quiz Modal Interaktif PID -->
+    <div id="quizModal" class="fixed inset-0 modal-overlay flex items-center justify-center p-3 sm:p-4 hidden z-50">
+        <div class="bg-slate-800 border-2 border-yellow-400 rounded-2xl p-4 sm:p-6 max-w-lg w-full shadow-2xl">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-2">
+                <span class="pixel-font text-xs text-yellow-400">KUIS INTERAKTIF SCRATCH</span>
+                <span id="questionBadge" class="bg-yellow-500 text-slate-900 font-bold text-xs px-2 py-1 rounded-md">Soal #1</span>
+            </div>
+            
+            <!-- Question Content -->
+            <h3 id="questionText" class="text-sm sm:text-base font-semibold text-white mb-4 leading-relaxed">
+                Pertanyaan akan muncul di sini...
+            </h3>
+
+            <!-- Options Grid -->
+            <div id="optionsContainer" class="grid grid-cols-1 gap-2.5 mb-3">
+                <!-- Option buttons generated via JS -->
+            </div>
+
+            <!-- Feedback Message -->
+            <div id="feedbackText" class="text-center font-bold text-sm min-h-[24px]"></div>
+        </div>
+    </div>
+
+    <!-- Overlay Screen (Start / Win / Game Over) -->
+    <div id="overlayModal" class="fixed inset-0 modal-overlay flex items-center justify-center p-4 z-40">
+        <div class="bg-slate-800 border-2 border-blue-500 rounded-2xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl">
+            <h2 id="overlayTitle" class="pixel-font text-xl sm:text-2xl text-yellow-400 mb-3">
+                PAC-MAN SCRATCH
+            </h2>
+            <p id="overlayDesc" class="text-xs sm:text-sm text-slate-300 mb-6 leading-relaxed">
+                <span class="text-yellow-400 font-bold">ATURAN MAIN:</span><br>
+                Gunakan tombol panah keyboard (▲ ▼ ◀ ▶), tombol navigasi di bawah labirin, atau usap (*swipe*) layar PID Anda untuk menggerakkan Pac-Man.<br><br>
+                Makan semua pelet dan temukan 6 orb berpendar ungu (`?`) untuk membuka kuis interaktif Scratch!
+            </p>
+            <button id="startBtn" class="pixel-font bg-green-500 hover:bg-green-600 text-slate-900 font-bold py-3.5 px-6 rounded-xl shadow-lg transition transform active:scale-95 text-sm">
+                MULAI PERMAINAN
+            </button>
+        </div>
+    </div>
+
+    <!-- Audio Synthesizer (Web Audio API) -->
+    <script>
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playEat() {
+                if (!this.ctx) return;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            playCorrect() {
+                if (!this.ctx) return;
+                let now = this.ctx.currentTime;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.1);
+                osc.frequency.setValueAtTime(783.99, now + 0.2);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            }
+
+            playWrong() {
+                if (!this.ctx) return;
+                let now = this.ctx.currentTime;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        }
+
+        const audioFX = new SoundEffects();
+    </script>
+
+    <!-- Main Game Logic -->
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Questions Array parsed from uploaded Scratch screenshots
+        const questions = [
+            {
+                id: 1,
+                question: "Berdasarkan code Cat, ke manakah posisi awal (koordinat) Cat bergerak ketika Bendera Hijau diklik?",
+                options: [
+                    "x: -170, y: -118",
+                    "x: 241, y: -159",
+                    "x: -170, y: -39",
+                    "x: 0, y: 0"
+                ],
+                correct: 0
+            },
+            {
+                id: 2,
+                question: "Bagaimana mekanisme penambahan variabel 'Score' pada skrip Cat?",
+                options: [
+                    "Diatur ke 0, lalu bertambah 1 setiap 1 detik secara berulang (selamanya)",
+                    "Bertambah 10 setiap kali menyentuh Crab",
+                    "Bertambah 1 hanya saat sprite Cat diklik",
+                    "Langsung disiarkan menjadi Game Over"
+                ],
+                correct: 0
+            },
+            {
+                id: 3,
+                question: "Berdasarkan code Crab, gerakan apa yang dilakukan Crab secara terus menerus (selamanya)?",
+                options: [
+                    "Pergi ke x: 241 y: -159 lalu meluncur 1 detik ke x: -241 y: -159",
+                    "Meluncur ke x: -170 y: -39 secara acak",
+                    "Mengubah kostum berikutnya setiap 0.1 detik",
+                    "Memulai suara 'Coin' lalu menghilang"
+                ],
+                correct: 0
+            },
+            {
+                id: 4,
+                question: "Apa aksi yang terjadi saat code Cat diklik oleh pengguna?",
+                options: [
+                    "Mulai suara 'Coin', meluncur 0.3 detik ke y: -39, lalu meluncur ke y: -118",
+                    "Menyiarkan pesan 'Game Over' dan menghentikan semua skrip",
+                    "Menambah skor sebesar 10 poin secara permanen",
+                    "Mengubah posisi x menjadi 241"
+                ],
+                correct: 0
+            },
+            {
+                id: 5,
+                question: "Apa kondisi dalam code Cat yang menyebabkan pesan 'Game Over' disiarkan?",
+                options: [
+                    "Jika Cat menyentuh Crab",
+                    "Jika skor telah mencapai angka 10",
+                    "Jika tombol spasi ditekan",
+                    "Jika Bendera Hijau diklik kedua kalinya"
+                ],
+                correct: 0
+            },
+            {
+                id: 6,
+                question: "Apa yang dilakukan Sprite Cat ketika menerima pesan 'Game Over'?",
+                options: [
+                    "Memulai suara 'Meow' dan katakan 'GAME OVER | KAMU KALAH'",
+                    "Meluncur kembali ke koordinat x: 241 y: -159",
+                    "Mulai suara 'Coin' dan mereset skor ke 0",
+                    "Melanjutkan gerakan kostum berikutnya"
+                ],
+                correct: 0
+            }
+        ];
+
+        // Grid Map: 15 cols x 10 rows (40x40px per tile)
+        // 1: Wall, 0: Normal Pellet, 2: Quiz Orb
+        const mazeGrid = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,2,0,0,1,0,0,2,0,0,1,0,0,2,1],
+            [1,0,1,0,1,0,1,1,1,0,1,0,1,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,0,1,0,1],
+            [1,0,1,1,1,0,1,0,1,0,1,1,1,0,1],
+            [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1],
+            [1,0,1,1,1,0,1,1,1,0,1,1,1,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,0,1,0,1],
+            [1,2,0,0,1,0,0,2,0,0,1,0,0,2,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        const TILE_SIZE = 40;
+        const COLS = 15;
+        const ROWS = 10;
+
+        let score = 0;
+        let lives = 3;
+        let solvedCount = 0;
+        let isPaused = true;
+        let gameActive = false;
+        let animationFrameId = null;
+
+        let pacman = {
+            pixelX: 40,
+            pixelY: 40,
+            dirX: 0,
+            dirY: 0,
+            nextDirX: 0,
+            nextDirY: 0,
+            speed: 2.5,
+            mouthAngle: 0.2,
+            mouthSpeed: 0.02
+        };
+
+        let ghosts = [
+            { pixelX: 7 * 40, pixelY: 4 * 40, color: '#ef4444', dirX: 1, dirY: 0, speed: 1.5 },
+            { pixelX: 7 * 40, pixelY: 5 * 40, color: '#ec4899', dirX: -1, dirY: 0, speed: 1.5 },
+            { pixelX: 8 * 40, pixelY: 4 * 40, color: '#06b6d4', dirX: 0, dirY: 1, speed: 1.5 }
+        ];
+
+        let pellets = [];
+
+        function initMap() {
+            pellets = [];
+            let quizIdx = 0;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (mazeGrid[r][c] === 0) {
+                        pellets.push({ col: c, row: r, type: 'normal', active: true });
+                    } else if (mazeGrid[r][c] === 2) {
+                        pellets.push({ 
+                            col: c, 
+                            row: r, 
+                            type: 'quiz', 
+                            active: true, 
+                            quizData: questions[quizIdx % questions.length] 
+                        });
+                        quizIdx++;
+                    }
+                }
+            }
+        }
+
+        function resetPositions() {
+            pacman.pixelX = 1 * TILE_SIZE;
+            pacman.pixelY = 1 * TILE_SIZE;
+            pacman.dirX = 0;
+            pacman.dirY = 0;
+            pacman.nextDirX = 0;
+            pacman.nextDirY = 0;
+
+            ghosts[0].pixelX = 7 * TILE_SIZE; ghosts[0].pixelY = 4 * TILE_SIZE;
+            ghosts[1].pixelX = 7 * TILE_SIZE; ghosts[1].pixelY = 5 * TILE_SIZE;
+            ghosts[2].pixelX = 8 * TILE_SIZE; ghosts[2].pixelY = 4 * TILE_SIZE;
+        }
+
+        function drawMaze() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (mazeGrid[r][c] === 1) {
+                        ctx.fillStyle = '#1e3a8a';
+                        ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        ctx.strokeStyle = '#3b82f6';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(c * TILE_SIZE + 2, r * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    }
+                }
+            }
+        }
+
+        function drawPellets() {
+            pellets.forEach(p => {
+                if (!p.active) return;
+                const centerX = p.col * TILE_SIZE + TILE_SIZE / 2;
+                const centerY = p.row * TILE_SIZE + TILE_SIZE / 2;
+
+                if (p.type === 'normal') {
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fde047';
+                    ctx.fill();
+                } else if (p.type === 'quiz') {
+                    const pulse = Math.sin(Date.now() * 0.006) * 2.5;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, 8 + pulse, 0, Math.PI * 2);
+                    ctx.fillStyle = '#a855f7';
+                    ctx.fill();
+                    ctx.strokeStyle = '#facc15';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 11px Poppins';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('?', centerX, centerY);
+                }
+            });
+        }
+
+        function drawPacman() {
+            const centerX = pacman.pixelX + TILE_SIZE / 2;
+            const centerY = pacman.pixelY + TILE_SIZE / 2;
+            const radius = TILE_SIZE / 2 - 4;
+
+            pacman.mouthAngle += pacman.mouthSpeed;
+            if (pacman.mouthAngle > 0.4 || pacman.mouthAngle < 0.05) {
+                pacman.mouthSpeed = -pacman.mouthSpeed;
+            }
+
+            let rotateAngle = 0;
+            if (pacman.dirX === 1) rotateAngle = 0;
+            else if (pacman.dirX === -1) rotateAngle = Math.PI;
+            else if (pacman.dirY === 1) rotateAngle = Math.PI / 2;
+            else if (pacman.dirY === -1) rotateAngle = -Math.PI / 2;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(rotateAngle);
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, pacman.mouthAngle, Math.PI * 2 - pacman.mouthAngle);
+            ctx.lineTo(0, 0);
+            ctx.fillStyle = '#eab308';
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawGhosts() {
+            ghosts.forEach(g => {
+                const centerX = g.pixelX + TILE_SIZE / 2;
+                const centerY = g.pixelY + TILE_SIZE / 2;
+                const radius = TILE_SIZE / 2 - 4;
+
+                ctx.beginPath();
+                ctx.arc(centerX, centerY - 2, radius, Math.PI, 0, false);
+                ctx.lineTo(centerX + radius, centerY + radius);
+                ctx.lineTo(centerX - radius, centerY + radius);
+                ctx.fillStyle = g.color;
+                ctx.fill();
+
+                // Eyes
+                ctx.beginPath();
+                ctx.arc(centerX - 4, centerY - 4, 3, 0, Math.PI * 2);
+                ctx.arc(centerX + 4, centerY - 4, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(centerX - 4 + g.dirX, centerY - 4 + g.dirY, 1.5, 0, Math.PI * 2);
+                ctx.arc(centerX + 4 + g.dirX, centerY - 4 + g.dirY, 1.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#1e293b';
+                ctx.fill();
+            });
+        }
+
+        function isWall(col, row) {
+            if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return true;
+            return mazeGrid[row][col] === 1;
+        }
+
+        function updatePacman() {
+            const gridX = Math.floor(pacman.pixelX / TILE_SIZE);
+            const gridY = Math.floor(pacman.pixelY / TILE_SIZE);
+            const offsetX = pacman.pixelX % TILE_SIZE;
+            const offsetY = pacman.pixelY % TILE_SIZE;
+
+            if (offsetX === 0 && offsetY === 0) {
+                if (pacman.nextDirX !== 0 || pacman.nextDirY !== 0) {
+                    if (!isWall(gridX + pacman.nextDirX, gridY + pacman.nextDirY)) {
+                        pacman.dirX = pacman.nextDirX;
+                        pacman.dirY = pacman.nextDirY;
+                    }
+                }
+                if (isWall(gridX + pacman.dirX, gridY + pacman.dirY)) {
+                    pacman.dirX = 0;
+                    pacman.dirY = 0;
+                }
+            }
+
+            pacman.pixelX += pacman.dirX * pacman.speed;
+            pacman.pixelY += pacman.dirY * pacman.speed;
+
+            const centerCol = Math.floor((pacman.pixelX + TILE_SIZE / 2) / TILE_SIZE);
+            const centerRow = Math.floor((pacman.pixelY + TILE_SIZE / 2) / TILE_SIZE);
+
+            pellets.forEach(p => {
+                if (p.active && p.col === centerCol && p.row === centerRow) {
+                    p.active = false;
+                    if (p.type === 'normal') {
+                        score += 10;
+                        audioFX.playEat();
+                    } else if (p.type === 'quiz') {
+                        score += 50;
+                        triggerQuiz(p.quizData);
+                    }
+                    updateUI();
+                }
+            });
+        }
+
+        function updateGhosts() {
+            ghosts.forEach(g => {
+                const offsetX = g.pixelX % TILE_SIZE;
+                const offsetY = g.pixelY % TILE_SIZE;
+
+                if (offsetX === 0 && offsetY === 0) {
+                    const currentCol = Math.floor(g.pixelX / TILE_SIZE);
+                    const currentRow = Math.floor(g.pixelY / TILE_SIZE);
+
+                    const possibleDirs = [
+                        { x: 1, y: 0 },
+                        { x: -1, y: 0 },
+                        { x: 0, y: 1 },
+                        { x: 0, y: -1 }
+                    ].filter(d => {
+                        if (d.x === -g.dirX && d.y === -g.dirY) return false;
+                        return !isWall(currentCol + d.x, currentRow + d.y);
+                    });
+
+                    if (possibleDirs.length > 0) {
+                        const randomDir = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
+                        g.dirX = randomDir.x;
+                        g.dirY = randomDir.y;
+                    } else {
+                        g.dirX = -g.dirX;
+                        g.dirY = -g.dirY;
+                    }
+                }
+
+                g.pixelX += g.dirX * g.speed;
+                g.pixelY += g.dirY * g.speed;
+
+                const dist = Math.hypot(
+                    (pacman.pixelX + TILE_SIZE / 2) - (g.pixelX + TILE_SIZE / 2),
+                    (pacman.pixelY + TILE_SIZE / 2) - (g.pixelY + TILE_SIZE / 2)
+                );
+
+                if (dist < TILE_SIZE / 1.5) {
+                    handleGhostCollision();
+                }
+            });
+        }
+
+        function handleGhostCollision() {
+            lives--;
+            audioFX.playWrong();
+            updateUI();
+
+            if (lives <= 0) {
+                endGame(false, "Game Over! Nyawa Anda habis terkejar musuh.");
+            } else {
+                resetPositions();
+            }
+        }
+
+        // Quiz Handling - Triggered only upon eating Quiz Orbs '?'
+        function triggerQuiz(quizObj) {
+            isPaused = true;
+
+            document.getElementById('questionBadge').innerText = `Soal #${quizObj.id}`;
+            document.getElementById('questionText').innerText = quizObj.question;
+            
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+            document.getElementById('feedbackText').innerText = '';
+
+            quizObj.options.forEach((optText, index) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left bg-slate-700 hover:bg-slate-600 text-white font-medium p-3 rounded-xl border border-slate-600 transition flex items-center gap-3 btn-touch active:bg-blue-700";
+                btn.innerHTML = `
+                    <span class="w-8 h-8 flex items-center justify-center bg-blue-600 rounded-full text-xs font-bold shrink-0">${String.fromCharCode(65 + index)}</span>
+                    <span class="text-xs sm:text-sm leading-snug">${optText}</span>
+                `;
+                btn.onclick = () => selectAnswer(index, quizObj.correct);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('quizModal').classList.remove('hidden');
+        }
+
+        function selectAnswer(selectedIndex, correctIndex) {
+            const feedbackEl = document.getElementById('feedbackText');
+            const btns = document.getElementById('optionsContainer').children;
+
+            for (let b of btns) b.disabled = true;
+
+            if (selectedIndex === correctIndex) {
+                feedbackEl.className = "text-center font-bold text-sm text-green-400";
+                feedbackEl.innerText = "Jawaban Benar! Mantap!";
+                audioFX.playCorrect();
+                score += 100;
+                solvedCount++;
+                updateUI();
+
+                setTimeout(() => {
+                    document.getElementById('quizModal').classList.add('hidden');
+                    isPaused = false;
+                    checkWinCondition();
+                }, 1200);
+
+            } else {
+                feedbackEl.className = "text-center font-bold text-sm text-red-400";
+                feedbackEl.innerText = "Jawaban Kurang Tepat!";
+                audioFX.playWrong();
+
+                setTimeout(() => {
+                    document.getElementById('quizModal').classList.add('hidden');
+                    isPaused = false;
+                }, 1400);
+            }
+        }
+
+        function checkWinCondition() {
+            if (solvedCount >= questions.length) {
+                endGame(true, "Selamat! Kamu berhasil menjawab semua 6 pertanyaan Scratch dengan tepat!");
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('scoreText').innerText = score;
+            document.getElementById('quizCountText').innerText = `${solvedCount}/${questions.length}`;
+            document.getElementById('livesText').innerText = '❤️'.repeat(Math.max(0, lives));
+        }
+
+        function endGame(isWin, message) {
+            gameActive = false;
+            isPaused = true;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+            document.getElementById('overlayTitle').innerText = isWin ? "HEBAT! MENANG!" : "GAME OVER";
+            document.getElementById('overlayTitle').className = isWin ? "pixel-font text-xl sm:text-2xl text-green-400 mb-3" : "pixel-font text-xl sm:text-2xl text-red-500 mb-3";
+            document.getElementById('overlayDesc').innerHTML = `${message}<br><br><strong>Skor Akhir Kamu: ${score}</strong>`;
+            document.getElementById('startBtn').innerText = "MAIN LAGI";
+            document.getElementById('overlayModal').classList.remove('hidden');
+        }
+
+        function gameLoop() {
+            if (gameActive && !isPaused) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawMaze();
+                drawPellets();
+                updatePacman();
+                drawPacman();
+                updateGhosts();
+                drawGhosts();
+            }
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // Directly starts the main game upon clicking "MULAI PERMAINAN"
+        function startGame() {
+            audioFX.init();
+            score = 0;
+            lives = 3;
+            solvedCount = 0;
+            updateUI();
+            initMap();
+            resetPositions();
+            
+            // Hide intro modal and start the action right away without opening quiz #1
+            document.getElementById('overlayModal').classList.add('hidden');
+            gameActive = true;
+            isPaused = false;
+        }
+
+        // Keyboard Controls
+        window.addEventListener('keydown', (e) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                e.preventDefault();
+            }
+            switch (e.key) {
+                case 'ArrowUp': case 'w': case 'W':
+                    pacman.nextDirX = 0; pacman.nextDirY = -1; break;
+                case 'ArrowDown': case 's': case 'S':
+                    pacman.nextDirX = 0; pacman.nextDirY = 1; break;
+                case 'ArrowLeft': case 'a': case 'A':
+                    pacman.nextDirX = -1; pacman.nextDirY = 0; break;
+                case 'ArrowRight': case 'd': case 'D':
+                    pacman.nextDirX = 1; pacman.nextDirY = 0; break;
+            }
+        });
+
+        // PID / Touch Gesture Support (Swipe Detection on Canvas)
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const canvasWrapper = document.getElementById('canvasWrapper');
+
+        canvasWrapper.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        canvasWrapper.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+            const threshold = 25; // minimum swipe distance
+
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                if (Math.abs(diffX) > threshold) {
+                    if (diffX > 0) { pacman.nextDirX = 1; pacman.nextDirY = 0; } // Swipe Right
+                    else { pacman.nextDirX = -1; pacman.nextDirY = 0; } // Swipe Left
+                }
+            } else {
+                if (Math.abs(diffY) > threshold) {
+                    if (diffY > 0) { pacman.nextDirX = 0; pacman.nextDirY = 1; } // Swipe Down
+                    else { pacman.nextDirX = 0; pacman.nextDirY = -1; } // Swipe Up
+                }
+            }
+        }, { passive: true });
+
+        // Virtual Touch Buttons for PID Screen
+        document.getElementById('btnUp').onclick = () => { pacman.nextDirX = 0; pacman.nextDirY = -1; };
+        document.getElementById('btnDown').onclick = () => { pacman.nextDirX = 0; pacman.nextDirY = 1; };
+        document.getElementById('btnLeft').onclick = () => { pacman.nextDirX = -1; pacman.nextDirY = 0; };
+        document.getElementById('btnRight').onclick = () => { pacman.nextDirX = 1; pacman.nextDirY = 0; };
+
+        // Fullscreen Toggle for PID & Canva Embeds
+        document.getElementById('fullscreenBtn').onclick = () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        };
+
+        // Click Start Button -> Immediately launches main interactive game map
+        document.getElementById('startBtn').onclick = startGame;
+
+        window.onload = () => {
+            initMap();
+            drawMaze();
+            drawPellets();
+            drawPacman();
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
